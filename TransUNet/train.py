@@ -65,9 +65,9 @@ if __name__ == "__main__":
         },
         'dcisHE': { # TODO
             # set these defaults however you want
-            'root_path': r'E:\PROJ_DCIS\training_patches\annotation_scheme-1\TEMP_all-patches', 
-            'list_dir': './lists/lists_dcisHE',
-            'num_classes': 3,
+            'root_path': r'E:\PROJ_DCIS\training_patches\annotation_scheme-0\TEMP_half-patches', 
+            'list_dir': r'E:\PROJ_DCIS\lists\lists_dcisHE_TU_pretrain_R50-ViT-B_16_skip3_epo150_bs8_224_4class',
+            'num_classes': 4,
         }
     }
     
