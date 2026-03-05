@@ -5,8 +5,8 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from networks.vit_seg_modeling import VisionTransformer as ViT_seg
-from networks.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
+from TransUNet.networks.vit_seg_modeling_resnetV2 import VisionTransformer as ViT_seg
+from TransUNet.networks.vit_seg_modeling_resnetV2 import CONFIGS as CONFIGS_ViT_seg
 
 # Path to your converted 3-class model
 model_path = "C:/Users/Waluigi/Desktop/github_repos/TransUNet/data/project_TransUNet/model/TU_Synapse224/TU_pretrain_R50-ViT-B_16_skip3_epo150_bs24_224/epoch_149_3class.pth"

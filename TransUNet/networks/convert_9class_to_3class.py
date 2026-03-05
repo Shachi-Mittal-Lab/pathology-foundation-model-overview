@@ -5,8 +5,8 @@ import sys
 import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from networks.vit_seg_modeling import VisionTransformer as ViT_seg
-from networks.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
+from TransUNet.networks.vit_seg_modeling_resnetV2 import VisionTransformer as ViT_seg
+from TransUNet.networks.vit_seg_modeling_resnetV2 import CONFIGS as CONFIGS_ViT_seg
 
 def convert_checkpoint(args):
     # Load configuration for 9 classes first

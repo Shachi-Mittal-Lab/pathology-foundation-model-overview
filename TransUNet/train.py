@@ -5,8 +5,8 @@ import random
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
-from networks.vit_seg_modeling import VisionTransformer as ViT_seg
-from networks.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
+from TransUNet.networks.vit_seg_modeling_resnetV2 import VisionTransformer as ViT_seg
+from TransUNet.networks.vit_seg_modeling_resnetV2 import CONFIGS as CONFIGS_ViT_seg
 from trainer import trainer_he
 
 parser = argparse.ArgumentParser()

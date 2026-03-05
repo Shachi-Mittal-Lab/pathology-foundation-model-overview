@@ -407,3 +407,46 @@ def wide_resnet101_2(pretrained=False, progress=True, **kwargs):
     return _resnet('wide_resnet101_2', Bottleneck, [3, 4, 23, 3],
                    pretrained, progress, **kwargs)
 
+# wrapper for preserving features --> Transunet
+class ResNet50Encoder(nn.Module):
+    def __init__(self, num_classes=21843, width_factor=1):
+        super(ResNet50Encoder, self).__init__()
+        
+        # standard resent inference
+        self.resnet = ResNet(
+            block=Bottleneck,
+            layers=[3, 4, 6, 3],
+            num_classes=num_classes,
+            zero_init_residual=False,
+            groups=1,
+            width_per_group=64 * width_factor,
+            replace_stride_with_dilation=None,
+            norm_layer=None
+        )
+        
+    def forward(self, x):
+        features = {}
+        
+        # accessing the layers and saving outputs
+        x = self.resnet.conv1(x)
+        x = self.resnet.bn1(x)
+        x = self.resnet.relu(x)
+        features['stem'] = x  # ← Save
+        
+        x = self.resnet.maxpool(x)
+        x = self.resnet.layer1(x)
+        features['res2'] = x  # ← Save
+        
+        x = self.resnet.layer2(x)
+        features['res3'] = x  # ← Save
+        
+        x = self.resnet.layer3(x)
+        features['res4'] = x  # ← Save
+        
+        x = self.resnet.layer4(x)
+        features['res5'] = x  # ← Save
+        
+        # Notice: we never call self.resnet.avgpool or self.resnet.fc
+        # This effectively "removes" the classification head
+        
+        return features

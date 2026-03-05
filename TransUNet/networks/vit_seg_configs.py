@@ -57,6 +57,23 @@ def get_r50_b16_config():
 
     return config
 
+def get_r50CCL_b16_config():
+    """Returns the Resnet50 trained with CCL + ViT-B/16 configuration."""
+    config = get_b16_config()
+    config.patches.grid = (7, 7)  # based on res5 size
+    config.resnet = ml_collections.ConfigDict()
+    config.resnet.num_layers = (3, 4, 6, 3)  # Not needed anymore, but keep for compatibility
+    config.resnet.width_factor = 1
+    
+    # ADD THESE LINES:
+    config.skip_channels = [1024, 512, 256, 64]  # res4, res3, res2, stem
+    config.n_skip = 4  # Use all 4 skip connections
+    config.decoder_channels = (256, 128, 64, 16)
+    config.n_classes = 2  # UPDATE THIS to your number of classes
+    config.activation = 'softmax'
+    
+    return config
+
 
 def get_b32_config():
     """Returns the ViT-B/32 configuration."""
