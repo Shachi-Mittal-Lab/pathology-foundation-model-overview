@@ -224,7 +224,7 @@ class Block(nn.Module):
         x = x + h
         return x, weights
 
-    def load_from(self, weights, n_block):
+    def load_from(self, weights, n_block): # loads weights from imagenet-21K pretrained ViT (.npz file --> has a specific nested structure)
         ROOT = f"Transformer/encoderblock_{n_block}"
         with torch.no_grad():
             query_weight = np2th(weights[pjoin(ROOT, ATTENTION_Q, "kernel")]).view(self.hidden_size, self.hidden_size).t()
@@ -260,6 +260,73 @@ class Block(nn.Module):
             self.attention_norm.bias.copy_(np2th(weights[pjoin(ROOT, ATTENTION_NORM, "bias")]))
             self.ffn_norm.weight.copy_(np2th(weights[pjoin(ROOT, MLP_NORM, "scale")]))
             self.ffn_norm.bias.copy_(np2th(weights[pjoin(ROOT, MLP_NORM, "bias")]))
+
+
+def load_weights_selectively(model, backbone_path, transunet_path, 
+                             load_backbone=True, 
+                             load_transformer=True, 
+                             load_decoder=True,
+                             load_seg_head=True):
+    """
+    Selectively load weights from different sources.
+    
+    Args:
+        model: VisionTransformer model
+        backbone_path: Path to backbone checkpoint (e.g., RetCCL)
+        transunet_path: Path to TransUNet checkpoint
+        load_backbone: Whether to load backbone weights
+        load_transformer: Whether to load transformer weights
+        load_decoder: Whether to load decoder weights
+        load_seg_head: Whether to load segmentation head weights
+    """
+    current_state_dict = model.state_dict()
+    
+    # load in backbone
+    if load_backbone and backbone_path: # TODO: currently only works with RetCCL
+        print("Loading backbone from:", backbone_path)
+        backbone_ckpt = torch.load(backbone_path, map_location='cpu')
+        for key, value in backbone_ckpt.items(): # assuming RetCCL format
+            if key.startswith('fc.'):
+                continue
+            new_key = f'transformer.embeddings.hybrid_model.resnet.{key}' # add the transunet prefix
+            if new_key in current_state_dict:
+                current_state_dict[new_key] = value
+    
+    # load transformer/decoder/head from TransUNet 
+    if transunet_path and (load_transformer or load_decoder or load_seg_head):
+        print("Loading TransUNet components from:", transunet_path)
+        transunet_ckpt = torch.load(transunet_path, map_location='cpu')
+        
+        # Handle different checkpoint formats
+        if 'model_state_dict' in transunet_ckpt:
+            transunet_state = transunet_ckpt['model_state_dict']
+        elif 'state_dict' in transunet_ckpt:
+            transunet_state = transunet_ckpt['state_dict']
+        else:
+            transunet_state = transunet_ckpt
+        
+        for key, value in transunet_state.items():
+            load_this_key = False
+            
+            if load_transformer and ('transformer.encoder' in key or 
+                                    'transformer.embeddings.patch_embeddings' in key or
+                                    'transformer.embeddings.position_embeddings' in key):
+                load_this_key = True
+            
+            if load_decoder and 'decoder' in key:
+                load_this_key = True
+            
+            if load_seg_head and 'segmentation_head' in key:
+                load_this_key = True
+            
+            if load_this_key and key in current_state_dict:
+                current_state_dict[key] = value
+    
+    # Load the combined state dict
+    model.load_state_dict(current_state_dict)
+    print("✓ Selective loading complete!")
+    
+    return model
 
 
 class Encoder(nn.Module):
@@ -485,6 +552,7 @@ CONFIGS = {
     'ViT-H_14': configs.get_h14_config(),
     'R50-ViT-B_16': configs.get_r50_b16_config(),
     'R50-ViT-L_16': configs.get_r50_l16_config(),
+    'R50-CCL-ViT-B_16': configs.get_r50CCL_b16_config(),
     'testing': configs.get_testing(),
 }
 

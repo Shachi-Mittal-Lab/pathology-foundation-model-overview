@@ -15,7 +15,7 @@ parser.add_argument('--pretrained_model_path', type=str, default='',
 parser.add_argument('--root_path', type=str,
                     default='../data/Synapse/train_npz', help='root dir for data')
 parser.add_argument('--dataset', type=str, 
-                    default='HE', help='dataset name')
+                    default='dcisHE', help='dataset name')
 parser.add_argument('--list_dir', type=str,
                     default='./lists/lists_Synapse', help='list dir')
 parser.add_argument('--num_classes', type=int,
@@ -108,7 +108,7 @@ if __name__ == "__main__":
     # Load ImageNet pretrained weights
     # net.load_from(weights=np.load(config_vit.pretrained_path))
 
-    # Load weights from model trained on CT data (9 classes)
+    # TODO Load weights from model trained on CT data (9 classes)
     if args.pretrained_model_path: 
         print(f"Loading 3-class pretrained weights from {args.pretrained_model_path}")
         checkpoint = torch.load(args.pretrained_model_path)
@@ -117,11 +117,11 @@ if __name__ == "__main__":
         # Fall back to ImageNet pretrained
         net.load_from(weights=np.load(config_vit.pretrained_path))
 
-    # Freeze everything
+    # TODO Freeze everything
     for p in net.parameters():
         p.requires_grad = False
 
-    # Unfreeze only the segmentation head TODO
+    # TODO Unfreeze only the segmentation head
     for p in net.segmentation_head.parameters():
         p.requires_grad = True
 

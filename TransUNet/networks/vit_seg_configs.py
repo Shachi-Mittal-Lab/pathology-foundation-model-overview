@@ -48,7 +48,7 @@ def get_r50_b16_config():
     config.resnet.width_factor = 1
 
     config.classifier = 'seg'
-    config.pretrained_path = '../model/vit_checkpoint/imagenet21k/R50+ViT-B_16.npz'
+    config.pretrained_path = '../model/vit_checkpoint/imagenet21k/R50+ViT-B_16.npz' 
     config.decoder_channels = (256, 128, 64, 16)
     config.skip_channels = [512, 256, 64, 16]
     config.n_classes = 2
@@ -65,7 +65,7 @@ def get_r50CCL_b16_config():
     config.resnet.num_layers = (3, 4, 6, 3)  # Not needed anymore, but keep for compatibility
     config.resnet.width_factor = 1
     
-    # ADD THESE LINES:
+    # TODO pre-trained path?
     config.skip_channels = [1024, 512, 256, 64]  # res4, res3, res2, stem
     config.n_skip = 4  # Use all 4 skip connections
     config.decoder_channels = (256, 128, 64, 16)

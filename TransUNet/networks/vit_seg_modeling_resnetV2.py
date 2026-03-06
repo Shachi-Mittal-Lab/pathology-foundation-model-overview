@@ -448,6 +448,7 @@ CONFIGS = {
     'ViT-H_14': configs.get_h14_config(),
     'R50-ViT-B_16': configs.get_r50_b16_config(),
     'R50-ViT-L_16': configs.get_r50_l16_config(),
+    'R50-CCL-ViT-B_16': configs.get_r50CCL_b16_config(),
     'testing': configs.get_testing(),
 }
 
