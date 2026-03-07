@@ -526,13 +526,14 @@ def load_zarr_level(zarr_path, level, roi_type='raw'):
 
     return open_ds(zarr_path / roi_type / f"s{level}")
 
-def extracting_annotations(slide_dir, training_patches_dir):
+def extracting_annotations(slide_dir, training_patches_dir, level):
     ''' 
     General Function executing all tasks above to convert H&E image with annotations and save to .npz tiles
 
     INPUTS:
     - slide_dir(str): path to H&E images
     - training_patches_dir(str): path to destination of annotated patches
+    - level: pyramid level (s[0,1,2,3] corresponding to 40x, 20x, 10x, and 5x)
     '''
     for slide in slide_dir.glob("*.svs"):
         slidename = slide.stem
@@ -558,18 +559,11 @@ def extracting_annotations(slide_dir, training_patches_dir):
                          zarr_path)
     
     # --- extracting training annotations as .npz files
-    
-    for level in range(0,4):
-        print(f'extracting training annotations for s{level}')
-        raw_arr = load_zarr_level(zarr_path, level, roi_type='raw')
-        labels_array = load_zarr_level(zarr_path, level, roi_type='labels')
-        save_npz_daisy(raw_arr,
-                       labels_array,
-                       slidename,
-                       output_dir)
-        level += 1
+    print('extracting training annotations')
+    raw_arr = load_zarr_level(zarr_path, level, roi_type='raw')
+    labels_array = load_zarr_level(zarr_path, level, roi_type='labels')
+    save_npz_daisy(raw_arr,
+                    labels_array,
+                    slidename,
+                    output_dir)
     return print('successfully extracted and saved all training annotations!')
-        
-
- 
-                              
