@@ -131,33 +131,37 @@ class Embeddings(nn.Module):
 
         if config.patches.get("grid") is not None:   # ResNet
             grid_size = config.patches["grid"]
-            patch_size = (img_size[0] // 16 // grid_size[0], img_size[1] // 16 // grid_size[1])
-            patch_size_real = (patch_size[0] * 16, patch_size[1] * 16)
-            n_patches = (img_size[0] // patch_size_real[0]) * (img_size[1] // patch_size_real[1])  
             self.hybrid = True
+            
+            # For standard ResNet50: 224x224 input -> 7x7 output at layer4 (res5)
+            # Downsampling: conv1 stride=2, maxpool stride=2, then 3 more stride=2 in layers
+            # Total: 2^5 = 32x downsampling
+            # resnet_output_size = img_size[0] // 32  # 224 // 32 = 7
+            # n_patches = resnet_output_size * resnet_output_size  # 7 * 7 = 49
+
+            resnet_output_size = img_size[0] // 16  # res4 is 16× downsampling
+            n_patches = resnet_output_size * resnet_output_size # 14 * 14 = 196 for res4
+            
+            # Use 1x1 conv to project ResNet features to transformer hidden dim
+            # (ResNet already did the spatial reduction)
+            patch_size = (1, 1)
+            
         else:
             patch_size = _pair(config.patches["size"])
             n_patches = (img_size[0] // patch_size[0]) * (img_size[1] // patch_size[1])
             self.hybrid = False
 
-        # if self.hybrid:
-        #     self.hybrid_model = ResNetV2(block_units=config.resnet.num_layers, width_factor=config.resnet.width_factor)
-        #     in_channels = self.hybrid_model.width * 16
-        # self.patch_embeddings = Conv2d(in_channels=in_channels,
-        #                                out_channels=config.hidden_size,
-        #                                kernel_size=patch_size,
-        #                                stride=patch_size)
-        
         if self.hybrid:
-            self.hybrid_model = ResNet50Encoder(num_classes=config.n_classes, width_factor=1)
-            in_channels = 2048  # ResNet50 layer4 (res5) output channels
+            self.hybrid_model = ResNet50Encoder()
+            # in_channels = 2048  # res5
+            in_channels = 1024 # res4
+        
         self.patch_embeddings = Conv2d(in_channels=in_channels,
-                                    out_channels=config.hidden_size,
-                                    kernel_size=patch_size,
-                                    stride=patch_size)
+                                       out_channels=config.hidden_size,
+                                       kernel_size=patch_size,
+                                       stride=patch_size)
         
         self.position_embeddings = nn.Parameter(torch.zeros(1, n_patches, config.hidden_size))
-
         self.dropout = Dropout(config.transformer["dropout_rate"])
 
 
@@ -180,27 +184,28 @@ class Embeddings(nn.Module):
             # Get feature dictionary from ResNet50Encoder
             feature_dict = self.hybrid_model(x)
             
-            # Use deepest features (res5) for transformer input
-            x = feature_dict['res5']  # Shape: (B, 2048, 7, 7) for 224x224 input
+            # Use res4 for transformer input
+            x = feature_dict['res4']  # Shape: (B, 1024, 14, 14) for 224×224 input
             
             # Prepare skip connection features for decoder
-            # Order matters: [high-res to low-res] to match decoder expectations
+            # Decoder upsamples: 14→28→56→112→224
+            # So we need skips at:   28, 56, 112, (none)
             features = [
-                feature_dict['res4'],   # 14×14 × 1024 (index 0)
-                feature_dict['res3'],   # 28×28 × 512  (index 1)
-                feature_dict['res2'],   # 56×56 × 256  (index 2)
-                feature_dict['stem'],   # 112×112 × 64 (index 3)
+                feature_dict['res3'],   # (B, 512, 28, 28)   - decoder block 0
+                feature_dict['res2'],   # (B, 256, 56, 56)   - decoder block 1
+                feature_dict['stem'],   # (B, 64, 112, 112)  - decoder block 2
+                None,                   # No skip for last block (224×224)
             ]
         else:
             features = None
         
-        x = self.patch_embeddings(x)  # (B, hidden, n_patches^(1/2), n_patches^(1/2))
-        x = x.flatten(2)
-        x = x.transpose(-1, -2)  # (B, n_patches, hidden)
+        x = self.patch_embeddings(x)  # (B, hidden_size, 14, 14)
+        x = x.flatten(2)              # (B, hidden_size, 196)
+        x = x.transpose(-1, -2)       # (B, 196, hidden_size)
 
         embeddings = x + self.position_embeddings
         embeddings = self.dropout(embeddings)
-        return embeddings, features # returns features as a dict
+        return embeddings, features
 
 
 class Block(nn.Module):

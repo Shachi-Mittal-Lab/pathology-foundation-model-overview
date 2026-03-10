@@ -5,8 +5,8 @@ import random
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
-from TransUNet.networks.vit_seg_modeling_resnetV2 import VisionTransformer as ViT_seg
-from TransUNet.networks.vit_seg_modeling_resnetV2 import CONFIGS as CONFIGS_ViT_seg
+from networks.vit_seg_modeling_resnetV2 import VisionTransformer as ViT_seg
+from networks.vit_seg_modeling_resnetV2 import CONFIGS as CONFIGS_ViT_seg
 from trainer import trainer_he
 
 parser = argparse.ArgumentParser()
@@ -65,8 +65,8 @@ if __name__ == "__main__":
         },
         'dcisHE': { # TODO
             # set these defaults however you want
-            'root_path': r'E:\PROJ_DCIS\training_patches\annotation_scheme-0\TEMP_half-patches', 
-            'list_dir': r'E:\PROJ_DCIS\lists\lists_dcisHE_TU_pretrain_R50-ViT-B_16_skip3_epo150_bs8_224_4class',
+            'root_path': r'"E:\PROJ_DCIS\training_patches\annotation_scheme-0\as0_all_tiles"', 
+            'list_dir': r'"E:\PROJ_DCIS\lists\lists_dcisHE_TU_retrain_R50-ViT-B_16_skip3_epo150_bs8_224_4class\train.txt"',
             'num_classes': 4,
         }
     }
@@ -115,15 +115,16 @@ if __name__ == "__main__":
         net.load_state_dict(checkpoint)
     else:
         # Fall back to ImageNet pretrained
+        print("Loading ImageNet21k pretrained weights...")
         net.load_from(weights=np.load(config_vit.pretrained_path))
 
-    # TODO Freeze everything
-    for p in net.parameters():
-        p.requires_grad = False
+    # # TODO Freeze everything
+    # for p in net.parameters():
+    #     p.requires_grad = False
 
-    # TODO Unfreeze only the segmentation head
-    for p in net.segmentation_head.parameters():
-        p.requires_grad = True
+    # # TODO Unfreeze only the segmentation head
+    # for p in net.segmentation_head.parameters():
+    #     p.requires_grad = True
 
     trainer = {'dcisHE': trainer_he,}
     trainer[dataset_name](args, net, snapshot_path)

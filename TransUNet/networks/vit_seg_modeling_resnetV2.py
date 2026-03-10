@@ -7,7 +7,9 @@ import copy
 import logging
 import math
 
-from os.path import join as pjoin
+# from os.path import join as pjoin
+def pjoin(*args):
+    return "/".join(args) # uses forward slashes as a connector
 
 import torch
 import torch.nn as nn

@@ -5,13 +5,14 @@ import random
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
-from TransUNet.networks.vit_seg_modeling_resnetV2 import VisionTransformer as ViT_seg
-from TransUNet.networks.vit_seg_modeling_resnetV2 import CONFIGS as CONFIGS_ViT_seg
+from networks.vit_seg_modeling_r50CCL import VisionTransformer as ViT_seg
+from networks.vit_seg_modeling_r50CCL import CONFIGS as CONFIGS_ViT_seg
+from networks.vit_seg_modeling_r50CCL import load_weights_selectively
 from trainer import trainer_he
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--pretrained_model_path', type=str, default='',
-                    help='path to a checkpoint to load (optional)')
+# parser.add_argument('--pretrained_model_path', type=str, default='',
+#                     help='path to a checkpoint to load (optional)')
 parser.add_argument('--root_path', type=str,
                     default='../data/Synapse/train_npz', help='root dir for data')
 parser.add_argument('--dataset', type=str, 
@@ -104,8 +105,8 @@ if __name__ == "__main__":
         },
         'dcisHE': { # TODO
             # set these defaults however you want
-            'root_path': r'E:\PROJ_DCIS\training_patches\annotation_scheme-0\TEMP_half-patches', 
-            'list_dir': r'E:\PROJ_DCIS\lists\lists_dcisHE_TU_pretrain_R50-ViT-B_16_skip3_epo150_bs8_224_4class',
+            'root_path': r"E:\PROJ_DCIS\training_patches\annotation_scheme-0\as0_all_tiles", 
+            'list_dir': r"E:\PROJ_DCIS\lists\lists_dcisHE_TU_retrain_R50-ViT-B_16_skip3_epo150_bs8_224_4class",
             'num_classes': 4,
         }
     }
@@ -140,29 +141,36 @@ if __name__ == "__main__":
     config_vit = CONFIGS_ViT_seg[args.vit_name]
     config_vit.n_classes = args.num_classes
     config_vit.n_skip = args.n_skip
+
     if args.vit_name.find('R50') != -1:
-        config_vit.patches.grid = (int(args.img_size / args.vit_patches_size), int(args.img_size / args.vit_patches_size))
+        if 'CCL' not in args.vit_name: # don't calculate patch grid if replacing backbone
+            config_vit.patches.grid = (int(args.img_size / args.vit_patches_size), 
+                                    int(args.img_size / args.vit_patches_size))
+
+    # ADD THIS DEBUG PRINT:
+    print(f"DEBUG: patches.grid = {config_vit.patches.grid}")  # Should be (7, 7)
+
     net = ViT_seg(config_vit, img_size=args.img_size, num_classes=config_vit.n_classes).cuda()
     
     # Load ImageNet pretrained weights
     # net.load_from(weights=np.load(config_vit.pretrained_path))
 
-    # TODO Load weights from model trained on CT data (9 classes)
-    if args.pretrained_model_path: 
-        print(f"Loading 3-class pretrained weights from {args.pretrained_model_path}")
-        checkpoint = torch.load(args.pretrained_model_path)
-        net.load_state_dict(checkpoint)
-    else:
-        # Fall back to ImageNet pretrained
-        net.load_from(weights=np.load(config_vit.pretrained_path))
+    # # TODO Load weights from model trained on CT data (9 classes)
+    # if args.pretrained_model_path: 
+    #     print(f"Loading 3-class pretrained weights from {args.pretrained_model_path}")
+    #     checkpoint = torch.load(args.pretrained_model_path)
+    #     net.load_state_dict(checkpoint)
+    # else:
+    #     # Fall back to ImageNet pretrained
+    #     net.load_from(weights=np.load(config_vit.pretrained_path))
 
-    # TODO Freeze everything
-    for p in net.parameters():
-        p.requires_grad = False
+    # # TODO Freeze everything
+    # for p in net.parameters():
+    #     p.requires_grad = False
 
-    # TODO Unfreeze only the segmentation head
-    for p in net.segmentation_head.parameters():
-        p.requires_grad = True
+    # # TODO Unfreeze only the segmentation head
+    # for p in net.segmentation_head.parameters():
+    #     p.requires_grad = True
 
     # ============================================================
     # LOAD IN WEIGHTS 
@@ -173,7 +181,8 @@ if __name__ == "__main__":
     print("=" * 60)
 
     if args.load_selective: # selective weight loading from different sources
-        net.load_weights_selectively(
+        load_weights_selectively(
+            model=net,
             backbone_path=args.backbone_path,
             transunet_path=args.transunet_path,
             load_backbone=args.load_backbone,
