@@ -86,6 +86,7 @@ def trainer_he(args, model, snapshot_path):
             loss = 0.5 * loss_ce + 0.5 * loss_dice
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0) # NEW: gradient norm clipping for gradient explosion
             optimizer.step()
             lr_ = base_lr * (1.0 - iter_num / max_iterations) ** 0.9
             for param_group in optimizer.param_groups:
