@@ -1,0 +1,9 @@
+hf_token: "your_hf_token_here"
+data_root: "data/patches"
+checkpoint_path: ""
+
+num_classes: 3          # → change to 5 when ready
+freeze_encoder: true    # set false for full fine-tuning
+batch_size: 16
+epochs: 50
+lr: 3e-4
