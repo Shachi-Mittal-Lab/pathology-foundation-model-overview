@@ -2,6 +2,7 @@ import os
 import argparse
 import numpy as np
 from PIL import Image
+from pathlib import Path
 import torch
 import torchvision.transforms as T
 import zarr
@@ -34,13 +35,14 @@ def model_prediction_rgb(
 ):
     def process_block(block: daisy.Block):
         inslices = s2_array._Array__slices(block.read_roi)
-        inslices = (inslices[1], inslices[2], inslices[0])
-        img = Image.fromarray(s2_array[inslices])
-        print(f"Input image shape for pt preds: {s2_array[inslices].shape}")
+        patch = s2_array[inslices]  # shape: (H, W, C)
+        # print(f"Input image shape for pt preds: {patch.shape}")
+        img = Image.fromarray(patch)
 
         input = inp_transforms_rgb(img).unsqueeze(0).to(device)
-        print(f"Final input dimensions: {input.shape}")
+        # print(f"Final input dimensions: {input.shape}")
 
+        # model prediction
         with torch.no_grad():
             preds = model(input)
             preds = torch.argmax(preds, dim=1)
@@ -49,20 +51,22 @@ def model_prediction_rgb(
 
         mask[block.write_roi] = preds
 
+    # model expects 224x224 pixels patches
+    block_roi = Roi((0, 0), (224, 224)) * s2_array.voxel_size # convert from pixel to world units
+    write_roi = Roi((0, 0), (224, 224)) * s2_array.voxel_size
+
     pred_task = daisy.Task(
         task,
         total_roi=s2_array.roi,
-        read_roi=Roi((0, 0), patch_size_final),
-        write_roi=Roi((0, 0), patch_size_final),
+        read_roi=block_roi,
+        write_roi=write_roi,
         read_write_conflict=False,
         num_workers=2,
         process_function=process_block,
     )
     daisy.run_blockwise(tasks=[pred_task], multiprocessing=False)
 
-    if pred_save_path:
-        zarr.save_array(pred_save_path, mask.data)
-        print(f"Mask saved to: {pred_save_path}")
+    print(f"Mask saved to: {pred_save_path}")
 
 
 if __name__ == "__main__":
@@ -79,6 +83,14 @@ if __name__ == "__main__":
     parser.add_argument("--device",         type=str,   default="auto",         help="Device: 'cpu', 'cuda', or 'auto'")
 
     args = parser.parse_args()
+
+    # --- Convert paths to pathlib.Path (fixes & and [] special characters) ---
+    zarr_path = Path(args.zarr_path.strip())
+    save_path = Path(args.save_path.strip())
+
+    print(f"zarr_path: {zarr_path}")
+    print(f"save_path: {save_path}")
+    print(f"Path exists: {zarr_path.exists()}")
 
     # --- Device ---
     if args.device == "auto":
@@ -102,8 +114,8 @@ if __name__ == "__main__":
 
     model.eval().to(device)
 
-    # --- Load image array ---
-    s2_array = open_ds(args.zarr_path, f"raw/{args.scale}")
+    # --- Load image array (pathlib fixes & and special chars in path) ---
+    s2_array = open_ds(zarr_path / "raw" / args.scale)
     print(f"Loaded array: raw/{args.scale}")
     print(f"  shape:      {s2_array.shape}")
     print(f"  voxel_size: {s2_array.voxel_size}")
@@ -111,11 +123,14 @@ if __name__ == "__main__":
 
     # --- Prepare output mask ---
     mask = prepare_ds(
-        args.save_path,
+        save_path,
         shape=s2_array.shape[:2],
+        offset=s2_array.offset,
         voxel_size=s2_array.voxel_size,
+        axis_names=["y", "x"],
+        units=s2_array.units,
         dtype=np.uint8,
-        roi=s2_array.roi,
+        mode="w",
     )
 
     # --- Run blockwise inference ---
@@ -127,5 +142,5 @@ if __name__ == "__main__":
         model=model,
         device=device,
         task=args.task,
-        pred_save_path=args.save_path,
+        pred_save_path=save_path,
     )
