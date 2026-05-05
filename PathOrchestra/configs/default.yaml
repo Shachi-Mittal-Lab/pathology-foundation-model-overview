@@ -1,9 +1,9 @@
-hf_token: "your_hf_token_here"
-data_root: "data/patches"
-checkpoint_path: ""
+hf_token: "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" # lisa's HF
+data_root: "E:\[PROJ]_DCIS\DATA\training_patches\annotation_scheme-0\as0_all_tiles"
+checkpoint_path: ""     # currently no checkpoint for decoder
 
-num_classes: 3          # → change to 5 when ready
+num_classes: 3          
 freeze_encoder: true    # set false for full fine-tuning
-batch_size: 16
+batch_size: 8
 epochs: 50
 lr: 3e-4
