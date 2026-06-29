@@ -1,5 +1,3 @@
-# DCIS
-
 # Pathology Foundation Models
 
 | Model | Date | Architecture | Params | Domain | Training Data | Evaluation | Regimen / Algorithm | Journal | Code / Access |
