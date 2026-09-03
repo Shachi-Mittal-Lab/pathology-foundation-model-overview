@@ -1,9 +1,15 @@
-# 3CC model
+# models
 *.h5
+*.pth
 
 # Data Files
 data/
 test/
+log/
+*.txt
+
+# misc
+*.json
 
 # Model file
 tilseg2/*.h5
