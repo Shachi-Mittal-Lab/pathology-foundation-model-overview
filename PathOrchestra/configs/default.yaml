@@ -1,4 +1,4 @@
-hf_token: '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' # lisa's HF
+hf_token: ''
 data_root: 'E:\[PROJ]_DCIS\DATA\BRACS\test\training_patches'
 checkpoint_path: ''     # currently no checkpoint for decoder
 
